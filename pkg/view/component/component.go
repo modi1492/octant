@@ -157,7 +157,7 @@ type Component interface {
 
 	// GetMetadata returns metadata for the component.
 	GetMetadata() Metadata
-	// SetAccessor sets the access for the component.
+	// SetAccessor sets the accessor for the component.
 	SetAccessor(string)
 	// IsEmpty returns true if the component is "empty".
 	IsEmpty() bool
