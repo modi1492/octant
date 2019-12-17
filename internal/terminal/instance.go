@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -59,9 +60,14 @@ type pty struct {
 
 	out  io.ReadWriter
 	size *remotecommand.TerminalSize
+
+	mu sync.RWMutex
 }
 
 func (p *pty) Write(b []byte) (int, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
 	return p.out.Write(b)
 }
 
@@ -98,8 +104,11 @@ func (p *pty) Next() *remotecommand.TerminalSize {
 	}
 }
 
-func (p *pty) stdout() io.Reader {
-	return p.out
+func (p *pty) ReadStdout(buf []byte) (int, error) {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
+	return p.out.Read(buf)
 }
 
 type instance struct {
@@ -166,7 +175,7 @@ func (t *instance) Read(size int) ([]byte, error) {
 
 	buf := make([]byte, size)
 
-	n, err := t.pty.stdout().Read(buf)
+	n, err := t.pty.ReadStdout(buf)
 	if err != nil {
 		if err == io.EOF {
 			line := buf[:n]
@@ -213,7 +222,14 @@ func (t *instance) ExitMessage() string { return t.exitMessage }
 // Active returns if the terminal is currently active. Active terminals
 // are non-TTY commands that are still streaming output OR tty terminals
 // that have not been exited.
-func (t *instance) Active() bool { return t.ctx.Err() == nil }
+func (t *instance) Active() bool {
+	select {
+	case <-t.ctx.Done():
+		return false
+	default:
+		return true
+	}
+}
 
 // Stop stops the terminal from attempting to read/write to stdout/in streams.
 // Calling stop will also cause the PTY to return an io.ErrClosedPipe from the PTY

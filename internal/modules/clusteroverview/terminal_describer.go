@@ -55,11 +55,10 @@ func (d *TerminalListDescriber) Describe(ctx context.Context, namespace string, 
 		tRow := component.TableRow{
 			"Container": nameLink,
 			"Command":   component.NewText(t.Command()),
-			// "TTY":       component.NewText(strconv.FormatBool(t.TTY())),
-			"Active": component.NewText(strconv.FormatBool(t.Active())),
-			"ID":     component.NewText(t.ID()),
-			"Age":    component.NewTimestamp(t.CreatedAt()),
-			"":       buttonGroup,
+			"Active":    component.NewText(strconv.FormatBool(t.Active())),
+			"ID":        component.NewText(t.ID()),
+			"Age":       component.NewTimestamp(t.CreatedAt()),
+			"":          buttonGroup,
 		}
 		tbl.Add(tRow)
 	}
