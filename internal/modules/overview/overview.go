@@ -265,7 +265,11 @@ func (co *Overview) extensionDescriber(path, namespace string, options describer
 	terminals := options.TerminalManager().List(namespace)
 
 	for _, t := range terminals {
-		tfl := component.NewFlexLayout(t.Command())
+		name := t.Command()
+		if !t.Active() {
+			name += " (exited)"
+		}
+		tfl := component.NewFlexLayout(name)
 		tfl.SetAccessor(t.ID())
 
 		details := component.TerminalDetails{

@@ -173,9 +173,13 @@ func (s *terminalStateManager) newEvent(t terminal.Instance) (octant.Event, erro
 
 	if ok && sendScrollback.(bool) {
 		data.Scrollback = t.Scrollback()
-		msg := t.ExitMessage()
-		if msg != "" {
-			data.Scrollback = append(data.Scrollback, []byte("\n"+msg)...)
+		if !t.Active() {
+			msg := t.ExitMessage()
+			if msg != "" {
+				data.Scrollback = append(data.Scrollback, []byte("\n"+msg)...)
+			} else {
+				data.Scrollback = append(data.Scrollback, []byte("\n"+"(process exited)")...)
+			}
 		}
 		s.setSendScrollback(t.ID(), false)
 	}
