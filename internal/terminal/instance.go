@@ -54,9 +54,10 @@ type pty struct {
 	io.Writer
 	remotecommand.TerminalSizeQueue
 
-	logger    log.Logger
-	keystroke chan []byte
-	resize    chan []uint16
+	logger       log.Logger
+	keystroke    chan []byte
+	resize       chan []uint16
+	activityFunc func()
 
 	out  io.ReadWriter
 	size *remotecommand.TerminalSize
@@ -67,6 +68,7 @@ type pty struct {
 func (p *pty) Write(b []byte) (int, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	defer p.activityFunc()
 
 	return p.out.Write(b)
 }
@@ -86,6 +88,7 @@ func (p *pty) Read(b []byte) (int, error) {
 
 		return 0, io.ErrClosedPipe
 	case key := <-p.keystroke:
+		defer p.activityFunc()
 		return copy(b, key), nil
 	default:
 		return 0, nil
@@ -132,7 +135,7 @@ type instance struct {
 var _ Instance = (*instance)(nil)
 
 // NewTerminalInstance creates a concrete Terminal
-func NewTerminalInstance(ctx context.Context, logger log.Logger, key store.Key, container, command string, tty bool) Instance {
+func NewTerminalInstance(ctx context.Context, logger log.Logger, key store.Key, container, command string, tty bool, activityChan chan Instance) Instance {
 	ctx, cancelFn := context.WithCancel(ctx)
 
 	termPty := &pty{
@@ -155,6 +158,10 @@ func NewTerminalInstance(ctx context.Context, logger log.Logger, key store.Key, 
 		pty:       termPty,
 		tty:       tty,
 		logger:    logger,
+	}
+
+	termPty.activityFunc = func() {
+		activityChan <- t
 	}
 
 	return t

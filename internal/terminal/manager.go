@@ -32,14 +32,17 @@ type Manager interface {
 	Get(id string) (Instance, bool)
 	Delete(id string)
 	Create(ctx context.Context, logger log.Logger, key store.Key, container string, command string, tty bool) (Instance, error)
+	Select(ctx context.Context) chan Instance
+	ForceUpdate(id string)
 	StopAll() error
 }
 
 type manager struct {
-	restClient  rest.Interface
-	config      *rest.Config
-	objectStore store.Store
-	instances   sync.Map
+	restClient   rest.Interface
+	config       *rest.Config
+	objectStore  store.Store
+	instances    sync.Map
+	chanInstance chan Instance
 }
 
 var _ Manager = (*manager)(nil)
@@ -52,15 +55,27 @@ func NewTerminalManager(ctx context.Context, client cluster.ClientInterface, obj
 	}
 
 	tm := &manager{
-		restClient:  restClient,
-		config:      client.RESTConfig(),
-		objectStore: objectStore,
+		restClient:   restClient,
+		config:       client.RESTConfig(),
+		objectStore:  objectStore,
+		chanInstance: make(chan Instance, 100),
 	}
 	return tm, nil
 }
 
+func (tm *manager) ForceUpdate(id string) {
+	i, ok := tm.Get(id)
+	if ok {
+		tm.chanInstance <- i
+	}
+}
+
+func (tm *manager) Select(ctx context.Context) chan Instance {
+	return tm.chanInstance
+}
+
 func (tm *manager) Create(ctx context.Context, logger log.Logger, key store.Key, container, command string, tty bool) (Instance, error) {
-	t := NewTerminalInstance(ctx, logger, key, container, command, tty)
+	t := NewTerminalInstance(ctx, logger, key, container, command, tty, tm.chanInstance)
 	tm.instances.Store(t.ID(), t)
 
 	pod, ok, err := tm.objectStore.Get(ctx, key)

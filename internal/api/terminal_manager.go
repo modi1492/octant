@@ -9,11 +9,12 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/vmware-tanzu/octant/internal/config"
-	"github.com/vmware-tanzu/octant/internal/event"
 	"github.com/vmware-tanzu/octant/internal/octant"
+	"github.com/vmware-tanzu/octant/internal/terminal"
 	"github.com/vmware-tanzu/octant/pkg/action"
 )
 
@@ -123,6 +124,7 @@ func (s *terminalStateManager) SendTerminalScrollback(state octant.State, payloa
 
 func (s *terminalStateManager) setSendScrollback(id string, v bool) {
 	s.sendScrollback.Store(id, v)
+	s.config.TerminalManager().ForceUpdate(id)
 }
 
 func (s *terminalStateManager) Start(ctx context.Context, state octant.State, client OctantClient) {
@@ -130,45 +132,57 @@ func (s *terminalStateManager) Start(ctx context.Context, state octant.State, cl
 	defer func() {
 		close(ch)
 	}()
-	s.poller.Run(ctx, ch, s.runUpdate(state, client), event.TerminalStreamDelay)
+
+	go func() {
+		tm := s.config.TerminalManager()
+	outer:
+		for {
+			select {
+			case <-ctx.Done():
+				break outer
+			case t := <-tm.Select(ctx):
+				event, err := s.newEvent(t)
+				if err != nil {
+					s.config.Logger().Debugf("newEvent: %s", err)
+					break
+				}
+				client.Send(event)
+			case <-time.After(3 * time.Millisecond):
+				break
+			}
+		}
+	}()
 }
 
-func (s *terminalStateManager) runUpdate(state octant.State, client OctantClient) PollerFunc {
-	return func(ctx context.Context) bool {
-		tm := s.config.TerminalManager()
-		for _, t := range tm.List(state.GetNamespace()) {
-			line, err := t.Read(readBufferSize)
-			if err != nil {
-				t.SetExitMessage(fmt.Sprintf("%v\n", err))
-				t.Stop()
-				continue
-			}
-
-			sendScrollback, ok := s.sendScrollback.Load(t.ID())
-			if line == nil && (!ok || !sendScrollback.(bool)) {
-				continue
-			}
-
-			key := t.Key()
-			eventType := octant.EventType(fmt.Sprintf("terminals/namespace/%s/pod/%s/container/%s/%s", key.Namespace, key.Name, t.Container(), t.ID()))
-			data := terminalOutput{Line: line}
-
-			if ok && sendScrollback.(bool) {
-				data.Scrollback = t.Scrollback()
-				msg := t.ExitMessage()
-				if msg != "" {
-					data.Scrollback = append(data.Scrollback, []byte("\n"+msg)...)
-				}
-				s.setSendScrollback(t.ID(), false)
-			}
-
-			terminalEvent := octant.Event{
-				Type: eventType,
-				Data: data,
-				Err:  nil,
-			}
-			client.Send(terminalEvent)
-		}
-		return false
+func (s *terminalStateManager) newEvent(t terminal.Instance) (octant.Event, error) {
+	line, err := t.Read(readBufferSize)
+	if err != nil {
+		t.SetExitMessage(fmt.Sprintf("%v\n", err))
+		t.Stop()
+		return octant.Event{}, errors.Wrap(err, "read error")
 	}
+
+	sendScrollback, ok := s.sendScrollback.Load(t.ID())
+	if line == nil && (!ok || !sendScrollback.(bool)) {
+		return octant.Event{}, errors.New("no scrollback or line")
+	}
+
+	key := t.Key()
+	eventType := octant.EventType(fmt.Sprintf("terminals/namespace/%s/pod/%s/container/%s/%s", key.Namespace, key.Name, t.Container(), t.ID()))
+	data := terminalOutput{Line: line}
+
+	if ok && sendScrollback.(bool) {
+		data.Scrollback = t.Scrollback()
+		msg := t.ExitMessage()
+		if msg != "" {
+			data.Scrollback = append(data.Scrollback, []byte("\n"+msg)...)
+		}
+		s.setSendScrollback(t.ID(), false)
+	}
+
+	return octant.Event{
+		Type: eventType,
+		Data: data,
+		Err:  nil,
+	}, nil
 }
