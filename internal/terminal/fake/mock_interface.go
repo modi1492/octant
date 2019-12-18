@@ -92,6 +92,32 @@ func (mr *MockManagerMockRecorder) Create(ctx, logger, key, container, command, 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockManager)(nil).Create), ctx, logger, key, container, command, tty)
 }
 
+// Select mocks base method
+func (m *MockManager) Select(ctx context.Context) chan terminal.Instance {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Select", ctx)
+	ret0, _ := ret[0].(chan terminal.Instance)
+	return ret0
+}
+
+// Select indicates an expected call of Select
+func (mr *MockManagerMockRecorder) Select(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Select", reflect.TypeOf((*MockManager)(nil).Select), ctx)
+}
+
+// ForceUpdate mocks base method
+func (m *MockManager) ForceUpdate(id string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "ForceUpdate", id)
+}
+
+// ForceUpdate indicates an expected call of ForceUpdate
+func (mr *MockManagerMockRecorder) ForceUpdate(id interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ForceUpdate", reflect.TypeOf((*MockManager)(nil).ForceUpdate), id)
+}
+
 // StopAll mocks base method
 func (m *MockManager) StopAll() error {
 	m.ctrl.T.Helper()
