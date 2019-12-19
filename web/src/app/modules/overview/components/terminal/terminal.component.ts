@@ -23,6 +23,7 @@ import trackByIdentity from 'src/app/util/trackBy/trackByIdentity';
 import { TerminalView, TerminalDetail } from 'src/app/models/content';
 import { WebsocketService } from '../../services/websocket/websocket.service';
 import { SliderService } from 'src/app/services/slider/slider.service';
+import { Subscription } from 'rxjs';
 
 @Component({
   encapsulation: ViewEncapsulation.None,
@@ -35,6 +36,7 @@ export class TerminalComponent implements OnDestroy, AfterViewInit {
   private term: Terminal;
   private fitAddon: FitAddon;
   trackByIdentity = trackByIdentity;
+  sliderServiceSubscription: Subscription;
 
   @Input() view: TerminalView;
   @ViewChild('terminal', { static: true }) terminalDiv: ElementRef;
@@ -58,6 +60,10 @@ export class TerminalComponent implements OnDestroy, AfterViewInit {
       this.terminalStream.scrollback.unsubscribe();
       this.terminalStream.line.unsubscribe();
       this.terminalStream = null;
+    }
+
+    if (this.sliderServiceSubscription) {
+      this.sliderServiceSubscription.unsubscribe();
     }
   }
 
@@ -88,12 +94,14 @@ export class TerminalComponent implements OnDestroy, AfterViewInit {
       this.term.focus();
       this.fitAddon.fit();
 
-      this.sliderService.resizedSliderEvent.subscribe(() => {
-        this.term.focus();
-        setTimeout(() => {
-          this.fitAddon.fit();
-        }, 0);
-      });
+      this.sliderServiceSubscription = this.sliderService.resizedSliderEvent.subscribe(
+        () => {
+          this.term.focus();
+          setTimeout(() => {
+            this.fitAddon.fit();
+          }, 0);
+        }
+      );
     }
   }
 
