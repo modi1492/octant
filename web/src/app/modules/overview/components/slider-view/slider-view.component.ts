@@ -56,8 +56,9 @@ export class SliderViewComponent implements OnChanges {
 
     if (this.animationState === 'out') {
       this.sliderService.resetDefault();
-    } else {
-      // Approximate conversion from 12rem
+    }
+
+    if (this.animationState === 'in' && !this.contentHeight) {
       this.sliderService.resetExpandedDefault();
     }
   }
