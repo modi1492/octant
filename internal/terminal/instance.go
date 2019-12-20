@@ -27,7 +27,6 @@ type Instance interface {
 	Key() store.Key
 	Container() string
 	Command() string
-	TTY() bool
 	Scrollback() []byte
 
 	Read(size int) ([]byte, error)
@@ -40,19 +39,18 @@ type Instance interface {
 	ExitMessage() string
 	CreatedAt() time.Time
 
-	Stdin() io.Reader
-	Stdout() io.Writer
-	Stderr() io.Writer
-	SizeQueue() remotecommand.TerminalSizeQueue
+	PTY() PTY
+}
+
+type PTY interface {
+	io.Reader
+	io.Writer
+	remotecommand.TerminalSizeQueue
 }
 
 type pty struct {
 	ctx      context.Context
 	cancelFn context.CancelFunc
-
-	io.Reader
-	io.Writer
-	remotecommand.TerminalSizeQueue
 
 	logger       log.Logger
 	keystroke    chan []byte
@@ -65,6 +63,9 @@ type pty struct {
 	mu sync.RWMutex
 }
 
+var _ PTY = (*pty)(nil)
+
+// Write writes bytes to the "stdout/err" buffer.
 func (p *pty) Write(b []byte) (int, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -73,6 +74,7 @@ func (p *pty) Write(b []byte) (int, error) {
 	return p.out.Write(b)
 }
 
+// Read reads bytes from stdin (p.keystroke) and copies them to the stdin buffer.
 func (p *pty) Read(b []byte) (int, error) {
 	select {
 	case <-p.ctx.Done():
@@ -95,6 +97,7 @@ func (p *pty) Read(b []byte) (int, error) {
 	}
 }
 
+// Next creates a new TerminalSize based on resize events.
 func (p *pty) Next() *remotecommand.TerminalSize {
 	select {
 	case <-p.ctx.Done():
@@ -107,6 +110,7 @@ func (p *pty) Next() *remotecommand.TerminalSize {
 	}
 }
 
+// ReadStdout reads from the buffer that Write writes stdout/err to.
 func (p *pty) ReadStdout(buf []byte) (int, error) {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
@@ -127,7 +131,6 @@ type instance struct {
 	scrollback  bytes.Buffer
 
 	pty *pty
-	tty bool
 
 	logger log.Logger
 }
@@ -135,7 +138,7 @@ type instance struct {
 var _ Instance = (*instance)(nil)
 
 // NewTerminalInstance creates a concrete Terminal
-func NewTerminalInstance(ctx context.Context, logger log.Logger, key store.Key, container, command string, tty bool, activityChan chan Instance) Instance {
+func NewTerminalInstance(ctx context.Context, logger log.Logger, key store.Key, container, command string, activityChan chan Instance) Instance {
 	ctx, cancelFn := context.WithCancel(ctx)
 
 	termPty := &pty{
@@ -156,7 +159,6 @@ func NewTerminalInstance(ctx context.Context, logger log.Logger, key store.Key, 
 		container: container,
 		command:   command,
 		pty:       termPty,
-		tty:       tty,
 		logger:    logger,
 	}
 
@@ -226,9 +228,7 @@ func (t *instance) SetExitMessage(m string) { t.exitMessage = m }
 // ExitMessage returns the exit message for the terminal instance.
 func (t *instance) ExitMessage() string { return t.exitMessage }
 
-// Active returns if the terminal is currently active. Active terminals
-// are non-TTY commands that are still streaming output OR tty terminals
-// that have not been exited.
+// Active returns if the terminal is currently active.
 func (t *instance) Active() bool {
 	select {
 	case <-t.ctx.Done():
@@ -259,19 +259,9 @@ func (t *instance) Container() string { return t.container }
 // Command returns the command that was used to stat this terminal.
 func (t *instance) Command() string { return t.command }
 
-// TTY returns a boolean if this terminal was started as a TTY.
-func (t *instance) TTY() bool { return t.tty }
-
 // CreatedAt returns the date/time this terminal was created.
 func (t *instance) CreatedAt() time.Time { return t.createdAt }
 
-func (t *instance) SizeQueue() remotecommand.TerminalSizeQueue { return t.pty }
-func (t *instance) Stdin() io.Reader                           { return t.pty }
-func (t *instance) Stdout() io.Writer                          { return t.pty }
-func (t *instance) Stderr() io.Writer {
-	if t.tty {
-		return nil
-	}
-
+func (t *instance) PTY() PTY {
 	return t.pty
 }

@@ -33,7 +33,7 @@ type Manager interface {
 	List(namespace string) []Instance
 	Get(id string) (Instance, bool)
 	Delete(id string)
-	Create(ctx context.Context, logger log.Logger, key store.Key, container string, command string, tty bool) (Instance, error)
+	Create(ctx context.Context, logger log.Logger, key store.Key, container string, command string) (Instance, error)
 	Select(ctx context.Context) chan Instance
 	ForceUpdate(id string)
 	StopAll() error
@@ -76,8 +76,8 @@ func (tm *manager) Select(ctx context.Context) chan Instance {
 	return tm.chanInstance
 }
 
-func (tm *manager) Create(ctx context.Context, logger log.Logger, key store.Key, container, command string, tty bool) (Instance, error) {
-	t := NewTerminalInstance(ctx, logger, key, container, command, tty, tm.chanInstance)
+func (tm *manager) Create(ctx context.Context, logger log.Logger, key store.Key, container, command string) (Instance, error) {
+	t := NewTerminalInstance(ctx, logger, key, container, command, tm.chanInstance)
 	tm.instances.Store(t.ID(), t)
 
 	pod, ok, err := tm.objectStore.Get(ctx, key)
@@ -97,10 +97,10 @@ func (tm *manager) Create(ctx context.Context, logger log.Logger, key store.Key,
 	req.VersionedParams(&corev1.PodExecOptions{
 		Container: container,
 		Command:   parseCommand(command),
-		Stdin:     t.Stdin() != nil,
-		Stdout:    t.Stdout() != nil,
-		Stderr:    t.Stderr() != nil,
-		TTY:       tty,
+		Stdin:     true,
+		Stdout:    true,
+		Stderr:    true,
+		TTY:       true,
 	}, scheme.ParameterCodec)
 
 	transport, upgradeTransport, err := spdy.RoundTripperFor(tm.config)
@@ -115,12 +115,13 @@ func (tm *manager) Create(ctx context.Context, logger log.Logger, key store.Key,
 		return nil, err
 	}
 
+	pty := t.PTY()
 	opts := remotecommand.StreamOptions{
-		Stdin:             t.Stdin(),
-		Stdout:            t.Stdout(),
-		Stderr:            t.Stderr(),
-		Tty:               tty,
-		TerminalSizeQueue: t.SizeQueue(),
+		Stdin:  pty,
+		Stdout: pty,
+		Stderr: pty,
+		Tty:    true,
+		// TerminalSizeQueue: pty,
 	}
 
 	go func() {
