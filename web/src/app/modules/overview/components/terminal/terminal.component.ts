@@ -77,7 +77,6 @@ export class TerminalComponent implements OnDestroy, AfterViewInit {
         disableStdin,
       });
 
-      this.initSize();
       this.initStream();
       this.enableResize();
       this.term.onData(data => {
@@ -109,7 +108,7 @@ export class TerminalComponent implements OnDestroy, AfterViewInit {
     let timeOut = null;
     const resizeDebounce = (e: { cols: number; rows: number }) => {
       const resize = () => {
-        if (this.view.config.terminal.active === true) {
+        if (this.view.config.terminal.active) {
           this.wss.sendMessage('sendTerminalResize', {
             terminalID: this.view.config.terminal.uuid,
             rows: e.rows,
@@ -125,16 +124,6 @@ export class TerminalComponent implements OnDestroy, AfterViewInit {
       this.fitAddon.fit();
     };
     this.term.onResize(resizeDebounce);
-  }
-
-  initSize() {
-    if (this.view.config.terminal.active) {
-      this.wss.sendMessage('sendTerminalResize', {
-        terminalID: this.view.config.terminal.uuid,
-        rows: this.term.rows,
-        cols: this.term.cols,
-      });
-    }
   }
 
   initStream() {
