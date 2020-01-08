@@ -19,9 +19,11 @@ import (
 	"github.com/vmware-tanzu/octant/internal/cluster"
 	"github.com/vmware-tanzu/octant/internal/log"
 	"github.com/vmware-tanzu/octant/pkg/store"
+	remotecommandconsts "k8s.io/apimachinery/pkg/util/remotecommand"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
+	"k8s.io/client-go/transport/spdy"
 )
 
 //go:generate mockgen -source=manager.go -destination=./fake/mock_interface.go -package=fake github.com/vmware-tanzu/octant/internal/terminal TerminalManager
@@ -101,7 +103,13 @@ func (tm *manager) Create(ctx context.Context, logger log.Logger, key store.Key,
 		TTY:       tty,
 	}, scheme.ParameterCodec)
 
-	rc, err := remotecommand.NewSPDYExecutor(tm.config, "POST", req.URL())
+	transport, upgradeTransport, err := spdy.RoundTripperFor(tm.config)
+	if err != nil {
+		t.SetExitMessage(fmt.Sprintf("%v", err))
+		return nil, err
+	}
+
+	rc, err := remotecommand.NewSPDYExecutorForProtocols(transport, upgradeTransport, "POST", req.URL(), remotecommandconsts.StreamProtocolV2Name)
 	if err != nil {
 		t.SetExitMessage(fmt.Sprintf("%v", err))
 		return nil, err
