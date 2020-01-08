@@ -6,8 +6,8 @@ package fake
 
 import (
 	gomock "github.com/golang/mock/gomock"
+	terminal "github.com/vmware-tanzu/octant/internal/terminal"
 	store "github.com/vmware-tanzu/octant/pkg/store"
-	io "io"
 	remotecommand "k8s.io/client-go/tools/remotecommand"
 	reflect "reflect"
 	time "time"
@@ -90,20 +90,6 @@ func (m *MockInstance) Command() string {
 func (mr *MockInstanceMockRecorder) Command() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Command", reflect.TypeOf((*MockInstance)(nil).Command))
-}
-
-// TTY mocks base method
-func (m *MockInstance) TTY() bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TTY")
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// TTY indicates an expected call of TTY
-func (mr *MockInstanceMockRecorder) TTY() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TTY", reflect.TypeOf((*MockInstance)(nil).TTY))
 }
 
 // Scrollback mocks base method
@@ -227,58 +213,83 @@ func (mr *MockInstanceMockRecorder) CreatedAt() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreatedAt", reflect.TypeOf((*MockInstance)(nil).CreatedAt))
 }
 
-// Stdin mocks base method
-func (m *MockInstance) Stdin() io.Reader {
+// PTY mocks base method
+func (m *MockInstance) PTY() terminal.PTY {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Stdin")
-	ret0, _ := ret[0].(io.Reader)
+	ret := m.ctrl.Call(m, "PTY")
+	ret0, _ := ret[0].(terminal.PTY)
 	return ret0
 }
 
-// Stdin indicates an expected call of Stdin
-func (mr *MockInstanceMockRecorder) Stdin() *gomock.Call {
+// PTY indicates an expected call of PTY
+func (mr *MockInstanceMockRecorder) PTY() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Stdin", reflect.TypeOf((*MockInstance)(nil).Stdin))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PTY", reflect.TypeOf((*MockInstance)(nil).PTY))
 }
 
-// Stdout mocks base method
-func (m *MockInstance) Stdout() io.Writer {
+// MockPTY is a mock of PTY interface
+type MockPTY struct {
+	ctrl     *gomock.Controller
+	recorder *MockPTYMockRecorder
+}
+
+// MockPTYMockRecorder is the mock recorder for MockPTY
+type MockPTYMockRecorder struct {
+	mock *MockPTY
+}
+
+// NewMockPTY creates a new mock instance
+func NewMockPTY(ctrl *gomock.Controller) *MockPTY {
+	mock := &MockPTY{ctrl: ctrl}
+	mock.recorder = &MockPTYMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use
+func (m *MockPTY) EXPECT() *MockPTYMockRecorder {
+	return m.recorder
+}
+
+// Read mocks base method
+func (m *MockPTY) Read(p []byte) (int, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Stdout")
-	ret0, _ := ret[0].(io.Writer)
+	ret := m.ctrl.Call(m, "Read", p)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Read indicates an expected call of Read
+func (mr *MockPTYMockRecorder) Read(p interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Read", reflect.TypeOf((*MockPTY)(nil).Read), p)
+}
+
+// Write mocks base method
+func (m *MockPTY) Write(p []byte) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Write", p)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Write indicates an expected call of Write
+func (mr *MockPTYMockRecorder) Write(p interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Write", reflect.TypeOf((*MockPTY)(nil).Write), p)
+}
+
+// Next mocks base method
+func (m *MockPTY) Next() *remotecommand.TerminalSize {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Next")
+	ret0, _ := ret[0].(*remotecommand.TerminalSize)
 	return ret0
 }
 
-// Stdout indicates an expected call of Stdout
-func (mr *MockInstanceMockRecorder) Stdout() *gomock.Call {
+// Next indicates an expected call of Next
+func (mr *MockPTYMockRecorder) Next() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Stdout", reflect.TypeOf((*MockInstance)(nil).Stdout))
-}
-
-// Stderr mocks base method
-func (m *MockInstance) Stderr() io.Writer {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Stderr")
-	ret0, _ := ret[0].(io.Writer)
-	return ret0
-}
-
-// Stderr indicates an expected call of Stderr
-func (mr *MockInstanceMockRecorder) Stderr() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Stderr", reflect.TypeOf((*MockInstance)(nil).Stderr))
-}
-
-// SizeQueue mocks base method
-func (m *MockInstance) SizeQueue() remotecommand.TerminalSizeQueue {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SizeQueue")
-	ret0, _ := ret[0].(remotecommand.TerminalSizeQueue)
-	return ret0
-}
-
-// SizeQueue indicates an expected call of SizeQueue
-func (mr *MockInstanceMockRecorder) SizeQueue() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SizeQueue", reflect.TypeOf((*MockInstance)(nil).SizeQueue))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Next", reflect.TypeOf((*MockPTY)(nil).Next))
 }
