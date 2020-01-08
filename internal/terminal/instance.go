@@ -89,12 +89,18 @@ func (p *pty) Read(b []byte) (int, error) {
 		}
 
 		return 0, io.ErrClosedPipe
-	case key := <-p.keystroke:
-		defer p.activityFunc()
-		return copy(b, key), nil
 	default:
+		break
+	}
+
+	key, ok := <-p.keystroke
+	if !ok {
 		return 0, nil
 	}
+
+	defer p.activityFunc()
+
+	return copy(b, key), nil
 }
 
 // Next creates a new TerminalSize based on resize events.
