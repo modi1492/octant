@@ -143,11 +143,11 @@ func (s *terminalStateManager) Start(ctx context.Context, state octant.State, cl
 			case t := <-tm.Select(ctx):
 				event, err := s.newEvent(t)
 				if err != nil {
-					s.config.Logger().Debugf("newEvent: %s", err)
 					break
 				}
 				client.Send(event)
-			case <-time.After(3 * time.Millisecond):
+			// A character every 25 ms is roughly 300 WPM typing.
+			case <-time.After(25 * time.Millisecond):
 				break
 			}
 		}

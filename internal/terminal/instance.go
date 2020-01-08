@@ -54,7 +54,7 @@ type pty struct {
 
 	logger       log.Logger
 	keystroke    chan []byte
-	resize       chan []uint16
+	resize       chan remotecommand.TerminalSize
 	activityFunc func()
 
 	out  io.ReadWriter
@@ -111,10 +111,7 @@ func (p *pty) Next() *remotecommand.TerminalSize {
 		return nil
 	}
 
-	return &remotecommand.TerminalSize{
-		Width:  size[0],
-		Height: size[1],
-	}
+	return &size
 }
 
 // ReadStdout reads from the buffer that Write writes stdout/err to.
@@ -154,7 +151,7 @@ func NewTerminalInstance(ctx context.Context, logger log.Logger, key store.Key, 
 		logger:    logger,
 		out:       &bytes.Buffer{},
 		keystroke: make(chan []byte, 25),
-		resize:    make(chan []uint16, 2),
+		resize:    make(chan remotecommand.TerminalSize, 2),
 		size:      &remotecommand.TerminalSize{},
 	}
 
@@ -177,8 +174,10 @@ func NewTerminalInstance(ctx context.Context, logger log.Logger, key store.Key, 
 }
 
 func (t *instance) Resize(cols, rows uint16) {
-	// TODO: fix this, currently when uncommented interactive terminals do not work.
-	t.pty.resize <- []uint16{cols, rows}
+	t.pty.resize <- remotecommand.TerminalSize{
+		Width:  cols,
+		Height: rows,
+	}
 }
 
 // Read attempts to read from the stdout bytes.Buffer. As a side-effect
