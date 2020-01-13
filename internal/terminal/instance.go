@@ -138,7 +138,8 @@ type instance struct {
 	container   string
 	command     string
 	exitMessage string
-	scrollback  bytes.Buffer
+
+	scrollback bytes.Buffer
 
 	pty *pty
 

@@ -118,43 +118,44 @@ func (s *terminalStateManager) SendTerminalScrollback(state octant.State, payloa
 	if err != nil {
 		return errors.Wrap(err, "extract terminal ID from payload")
 	}
-	s.setSendScrollback(terminalID, true)
+	tm := s.config.TerminalManager()
+	_, ok := tm.Get(terminalID)
+	if !ok {
+		return errors.New(fmt.Sprintf("terminal %s not found", terminalID))
+	}
+	tm.SetScrollback(terminalID, true)
+	tm.ForceUpdate(terminalID)
 	return nil
 }
 
-func (s *terminalStateManager) setSendScrollback(id string, v bool) {
-	s.sendScrollback.Store(id, v)
-	s.config.TerminalManager().ForceUpdate(id)
-}
+func (s *terminalStateManager) Start(ctx context.Context, state octant.State, client OctantClient) {}
 
-func (s *terminalStateManager) Start(ctx context.Context, state octant.State, client OctantClient) {
-	ch := make(chan struct{}, 1)
-	defer func() {
-		close(ch)
-	}()
-
-	go func() {
-		tm := s.config.TerminalManager()
-	outer:
-		for {
-			select {
-			case <-ctx.Done():
-				break outer
-			case t := <-tm.Select(ctx):
-				event, err := s.newEvent(t)
-				if err != nil {
-					break
-				}
-				client.Send(event)
-			// A character every 25 ms is roughly 300 WPM typing.
-			case <-time.After(25 * time.Millisecond):
+func TerminalEventProcessor(ctx context.Context, config config.Dash, manager *WebsocketClientManager) {
+	tm := config.TerminalManager()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case t := <-tm.Select(ctx):
+			sendScrollback := tm.SendScrollback(t.ID())
+			event, err := newEvent(ctx, t, sendScrollback)
+			if sendScrollback {
+				tm.SetScrollback(t.ID(), false)
+			}
+			if err != nil {
 				break
 			}
+			for _, client := range manager.Clients() {
+				client.Send(event)
+			}
+		// A character every 25 ms is roughly 300 WPM typing.
+		case <-time.After(25 * time.Millisecond):
+			break
 		}
-	}()
+	}
 }
 
-func (s *terminalStateManager) newEvent(t terminal.Instance) (octant.Event, error) {
+func newEvent(ctx context.Context, t terminal.Instance, sendScrollback bool) (octant.Event, error) {
 	line, err := t.Read(readBufferSize)
 	if err != nil {
 		t.SetExitMessage(fmt.Sprintf("%v\n", err))
@@ -162,8 +163,7 @@ func (s *terminalStateManager) newEvent(t terminal.Instance) (octant.Event, erro
 		return octant.Event{}, errors.Wrap(err, "read error")
 	}
 
-	sendScrollback, ok := s.sendScrollback.Load(t.ID())
-	if line == nil && (!ok || !sendScrollback.(bool)) {
+	if line == nil && !sendScrollback {
 		return octant.Event{}, errors.New("no scrollback or line")
 	}
 
@@ -171,7 +171,7 @@ func (s *terminalStateManager) newEvent(t terminal.Instance) (octant.Event, erro
 	eventType := octant.EventType(fmt.Sprintf("terminals/namespace/%s/pod/%s/container/%s/%s", key.Namespace, key.Name, t.Container(), t.ID()))
 	data := terminalOutput{Line: line}
 
-	if ok && sendScrollback.(bool) {
+	if sendScrollback {
 		data.Scrollback = t.Scrollback()
 		if !t.Active() {
 			msg := t.ExitMessage()
@@ -181,7 +181,6 @@ func (s *terminalStateManager) newEvent(t terminal.Instance) (octant.Event, erro
 				data.Scrollback = append(data.Scrollback, []byte("\n"+"(process exited)")...)
 			}
 		}
-		s.setSendScrollback(t.ID(), false)
 	}
 
 	return octant.Event{

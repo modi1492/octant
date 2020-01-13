@@ -34,6 +34,8 @@ type Manager interface {
 	Create(ctx context.Context, logger log.Logger, key store.Key, container string, command string) (Instance, error)
 	Select(ctx context.Context) chan Instance
 	ForceUpdate(id string)
+	SendScrollback(id string) bool
+	SetScrollback(id string, send bool)
 	StopAll() error
 }
 
@@ -42,6 +44,7 @@ type manager struct {
 	config       *rest.Config
 	objectStore  store.Store
 	instances    sync.Map
+	scrollback   sync.Map
 	chanInstance chan Instance
 }
 
@@ -63,6 +66,21 @@ func NewTerminalManager(ctx context.Context, client cluster.ClientInterface, obj
 	return tm, nil
 }
 
+// SetScrollback sets the current scrollback state for a terminal instance.
+func (tm *manager) SetScrollback(id string, sendScrollback bool) {
+	tm.scrollback.Store(id, sendScrollback)
+}
+
+// SendScrollback returns the current scrollback state for a terminal instance.
+func (tm *manager) SendScrollback(id string) bool {
+	v, ok := tm.scrollback.Load(id)
+	if !ok {
+		return false
+	}
+	return v.(bool)
+}
+
+// ForceUpdate sends the instance for the given ID on to the instance work channel.
 func (tm *manager) ForceUpdate(id string) {
 	i, ok := tm.Get(id)
 	if ok {
