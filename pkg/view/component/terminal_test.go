@@ -7,12 +7,14 @@ package component
 
 import (
 	"encoding/json"
+	"io/ioutil"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func TestTerminal_Marshall(t *testing.T) {
+func TestTerminal_Marshal(t *testing.T) {
 	details := TerminalDetails{
 		Container: "container-id",
 		Command:   "/bin/bash",
@@ -23,29 +25,8 @@ func TestTerminal_Marshall(t *testing.T) {
 	actual, err := json.Marshal(input)
 	assert.NoError(t, err)
 
-	var expected = `
-            {
-                "metadata": {
-									"type": "terminal",
-									"title": [
-										{
-											"config": { "value": "default / term-test" },
-											"metadata": { "type": "text" }
-										}
-									]
-                },
-                "config": {
-                  	"name": "term-test",
-                  	"namespace": "default",
-					"terminal": {
-						"active": false,
-						"command": "/bin/bash",
-						"container": "container-id",
-						"createdAt": "0001-01-01T00:00:00Z",
-						"uuid": "0000-0000-0000-0000-0000"
-                    }
-                }
-            }
-`
-	assert.JSONEq(t, expected, string(actual))
+	expected, err := ioutil.ReadFile(filepath.Join("testdata", "terminal.json"))
+	assert.NoError(t, err)
+
+	assert.JSONEq(t, string(expected), string(actual))
 }

@@ -118,6 +118,32 @@ func (mr *MockManagerMockRecorder) ForceUpdate(id interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ForceUpdate", reflect.TypeOf((*MockManager)(nil).ForceUpdate), id)
 }
 
+// SendScrollback mocks base method
+func (m *MockManager) SendScrollback(id string) bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SendScrollback", id)
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// SendScrollback indicates an expected call of SendScrollback
+func (mr *MockManagerMockRecorder) SendScrollback(id interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendScrollback", reflect.TypeOf((*MockManager)(nil).SendScrollback), id)
+}
+
+// SetScrollback mocks base method
+func (m *MockManager) SetScrollback(id string, send bool) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetScrollback", id, send)
+}
+
+// SetScrollback indicates an expected call of SetScrollback
+func (mr *MockManagerMockRecorder) SetScrollback(id, send interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetScrollback", reflect.TypeOf((*MockManager)(nil).SetScrollback), id, send)
+}
+
 // StopAll mocks base method
 func (m *MockManager) StopAll() error {
 	m.ctrl.T.Helper()
