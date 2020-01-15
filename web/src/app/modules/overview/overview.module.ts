@@ -63,7 +63,10 @@ import { DonutChartComponent } from './components/donut-chart/donut-chart.compon
 import { SingleStatComponent } from './components/single-stat/single-stat.component';
 
 export function hljsLanguages() {
-  return [{ name: 'yaml', func: yaml }, { name: 'json', func: json }];
+  return [
+    { name: 'yaml', func: yaml },
+    { name: 'json', func: json },
+  ];
 }
 
 @NgModule({
