@@ -27,6 +27,7 @@ import (
 	"github.com/vmware-tanzu/octant/internal/log"
 	"github.com/vmware-tanzu/octant/internal/module"
 	moduleFake "github.com/vmware-tanzu/octant/internal/module/fake"
+	"github.com/vmware-tanzu/octant/internal/terminal"
 	terminalFake "github.com/vmware-tanzu/octant/internal/terminal/fake"
 	"github.com/vmware-tanzu/octant/pkg/navigation"
 	"github.com/vmware-tanzu/octant/pkg/view/component"
@@ -102,7 +103,8 @@ func TestAPI_routes(t *testing.T) {
 			ctx := context.Background()
 			srv := api.New(ctx, "/", actionDispatcher, dashConfig)
 
-			terminalManager.EXPECT().Select(ctx)
+			instances := make(chan terminal.Instance)
+			terminalManager.EXPECT().Select(ctx).Return(instances).AnyTimes()
 
 			handler, err := srv.Handler(ctx)
 			require.NoError(t, err)
